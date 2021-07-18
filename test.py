@@ -56,9 +56,10 @@ for part in partitions:
 
 
 # %%
-def get_node_cost(node, corpus):
+def get_node_cost(in_node, corpus):
+    node = in_node[:]
     for gram_ind, gram in enumerate(node):
-        if gram in corpus:
+        if tuple(gram) in corpus:
             node[gram_ind] = 0
         else:
             node[gram_ind] = 1
@@ -76,7 +77,43 @@ def get_cost(level, corpus):
 
 print(get_cost(partitions, []))
 
-# %%
 
+# %%
+def get_corpus(in_chosen_nodes):
+    local_corpus = set()
+    for level_ind, node_ind in enumerate(in_chosen_nodes):
+        local_corpus |= set([tuple(val) for val in levels[level_ind][node_ind]])
+    return local_corpus
+
+
+# %%
+dataset = df["headline_text"].head()
+levels = [list(partition(level.split())) for level in dataset]
+chosen_nodes = [3, 4, 5, 6]
+# levels = []
+# for level in [tuple(partition(level.split())) for level in dataset]:
+#     this_level = []
+#     for node in level:
+#         this_level.append(tuple([tuple(gram) for gram in node]))
+#     levels.append(this_level)
+
+# for level in levels:
+#     get_cost(level, corpus)
+print(get_cost(levels[0], get_corpus(chosen_nodes)))
+
+
+for level_ind, node_ind in enumerate(chosen_nodes):
+    print(f"\n({level_ind}, {node_ind}): {levels[level_ind][node_ind]}")
+    base_cost = get_node_cost(levels[level_ind][node_ind], [])
+    actual_cost = get_node_cost(levels[level_ind][node_ind], get_corpus(chosen_nodes))
+    print(f"Base cost: {base_cost}\tActual Cost: {actual_cost}")
+# %%
+# local_corpus = set()
+# for level_ind, node_ind in enumerate(chosen_nodes):
+#     print()
+#     print(f"({level_ind}, {node_ind}): {levels[level_ind][node_ind]}")
+#     if level_ind < 3:
+#         local_corpus |= set([tuple(val) for val in levels[level_ind][node_ind]])
+#     print(get_node_cost(levels[level_ind][node_ind], local_corpus))
 
 # %%
