@@ -1,6 +1,7 @@
 # %%
 import pandas as pd
 from nltk import ngrams
+import copy
 
 df = pd.read_csv(r"abcnews-date-text\abcnews-date-text.csv")
 
@@ -47,10 +48,35 @@ def partition(collection):
 #         print(partitions)
 
 # %%
-partitions = partition(df["headline_text"][0].split())
+partitions = list(partition(df["headline_text"][0].split()))
 
 # %%
 for part in partitions:
     print(part)
+
+
+# %%
+def get_node_cost(node, corpus):
+    for gram_ind, gram in enumerate(node):
+        if gram in corpus:
+            node[gram_ind] = 0
+        else:
+            node[gram_ind] = 1
+
+    return sum(node)
+
+
+# %%
+def get_cost(level, corpus):
+    level_vals = copy.deepcopy(level)
+    for ind, node in enumerate(level_vals):
+        level_vals[ind] = get_node_cost(node, corpus)
+    return level_vals
+
+
+print(get_cost(partitions, []))
+
+# %%
+
 
 # %%
