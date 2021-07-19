@@ -5,6 +5,10 @@ import pandas as pd
 
 
 def partition(collection):
+    """Basic Partition function.
+    This was used from https://stackoverflow.com/a/30134039/13419030
+    Since partitioning was not the main focus of the project, and this seemed to
+    be a common implementation, I figured there was no issue using this function"""
     global counter
     if len(collection) == 1:
         yield [collection]

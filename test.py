@@ -57,10 +57,12 @@ for part in partitions:
 
 # %%
 def get_node_cost(in_node, corpus):
+    """Used to get the cost of a node, the cost of the node is reduced if it
+    is made up of grams that have been selected already"""
     node = in_node[:]
     for gram_ind, gram in enumerate(node):
         if tuple(gram) in corpus:
-            node[gram_ind] = 0
+            node[gram_ind] = -1
         else:
             node[gram_ind] = 1
 
@@ -80,6 +82,9 @@ print(get_cost(partitions, []))
 
 # %%
 def get_seq_cost(seq):
+    """Returns the cost of a sequence where in enumerated form,
+    The index is the index in 'levels' of a sentance's partitions,
+    the value is the partition set selected"""
     seq_vals = copy.deepcopy(seq)
     seq_costs = []
     for lev_ind, nod_ind in enumerate(seq_vals):
@@ -96,6 +101,8 @@ get_seq_cost([1, 2, 3, 4])
 
 # %%
 def get_corpus(in_chosen_nodes):
+    """Function used to create a corpus of partitions already used.
+    This is used to calculate the cost of nodes"""
     local_corpus = set()
     for level_ind, node_ind in enumerate(in_chosen_nodes):
         local_corpus |= set([tuple(val) for val in levels[level_ind][node_ind]])
@@ -139,32 +146,50 @@ for level_ind, level in enumerate(levels):
         for node_ind, node in enumerate(level)
     }
 
+#%%
+# Dataset used for testing
+dataset = ["A B C D", "A B C", "A B C", "A B C"]
+levels = [list(partition(level.split())) for level in dataset]
+
+
 # %%
-visited = []
-current = 0
-distances = dict()
-while True:
-    neighbors = [
-        visited[:] + [node_ind] for node_ind, _ in enumerate(levels[len(visited)])
-    ]
-    unvisited = {tuple(node): None for node in neighbors[:]}
-    for neighbor in neighbors:
-        neighbor = tuple(neighbor)
-        newDistance = get_node_cost(
-            levels[len(neighbor) - 1][neighbor[-1]], get_corpus(tuple(visited))
-        )
-        if unvisited[neighbor] is None or unvisited[neighbor] > newDistance:
-            unvisited[neighbor] = newDistance
-    # visited[current] = currentDistance
-    visited.append(current)
-    # del unvisited[current]
-    if not unvisited or len(visited) == len(levels):
-        break
-    candidates = [node for node in unvisited.items() if node[1]]
-    current, currentDistance = sorted(candidates, key=lambda x: x[1])[0]
-    current = current[0]
+def dijkstras():
+    """Initial implementation, I am currently encountering issues dynamically
+    cycling through nodes. It is instead selecting the first node no matter what"""
+    visited = []
+    current = None
+    while True:
+        levs = [lev[0] for lev in visited]
+        neighbors = [
+            levs[:] + [node_ind] for node_ind, _ in enumerate(levels[len(visited)])
+        ]
+        unvisited = {tuple(node): None for node in neighbors[:]}
+        for neighbor in neighbors:
+            neighbor = tuple(neighbor)
+            newDistance = get_seq_cost(neighbor)
+            if unvisited[neighbor] is None or unvisited[neighbor] > newDistance:
+                unvisited[neighbor] = newDistance
+        if current is not None:
+            visited.append(current)
+        if not unvisited or len(visited) == len(levels):
+            break
+        candidates = [node for node in unvisited.items() if node[1]]
+        current = sorted(candidates, key=lambda x: x[1])[0]
+        # current = current[0] + 1
+
+    print(visited)
 
 
-print(visited)
+# %%
+dijkstras()
+# %%
+import itertools
+
+graph = [[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]]
+test_list = list(itertools.permutations(range(4), 4))
+# %%
+for nod in test_list:
+    get_node_cost(levels[len(nod) - 1][nod[-1]], get_corpus(tuple(visited)))
+
 
 # %%
