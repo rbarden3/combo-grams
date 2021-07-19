@@ -79,6 +79,22 @@ print(get_cost(partitions, []))
 
 
 # %%
+def get_seq_cost(seq):
+    seq_vals = copy.deepcopy(seq)
+    seq_costs = []
+    for lev_ind, nod_ind in enumerate(seq_vals):
+        seq_costs.append(
+            get_node_cost(
+                levels[lev_ind][nod_ind], get_corpus(tuple(seq_vals[:lev_ind]))
+            )
+        )
+    return seq_costs
+
+
+get_seq_cost([1, 2, 3, 4])
+
+
+# %%
 def get_corpus(in_chosen_nodes):
     local_corpus = set()
     for level_ind, node_ind in enumerate(in_chosen_nodes):
