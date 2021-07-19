@@ -107,13 +107,48 @@ for level_ind, node_ind in enumerate(chosen_nodes):
     base_cost = get_node_cost(levels[level_ind][node_ind], [])
     actual_cost = get_node_cost(levels[level_ind][node_ind], get_corpus(chosen_nodes))
     print(f"Base cost: {base_cost}\tActual Cost: {actual_cost}")
+
+print(get_cost(levels[len(chosen_nodes)], get_corpus(chosen_nodes)))
+for level_ind, level in enumerate(levels):
+    print(f"\n({level_ind}): {level}")
 # %%
-# local_corpus = set()
-# for level_ind, node_ind in enumerate(chosen_nodes):
-#     print()
-#     print(f"({level_ind}, {node_ind}): {levels[level_ind][node_ind]}")
-#     if level_ind < 3:
-#         local_corpus |= set([tuple(val) for val in levels[level_ind][node_ind]])
-#     print(get_node_cost(levels[level_ind][node_ind], local_corpus))
+distances = {}
+# for level_ind, level in enumerate(levels):
+#     for node_ind, node in enumerate(level):
+#         distances[(level_ind, node_ind)] = get_node_cost(node, get_corpus(chosen_nodes))
+
+for level_ind, level in enumerate(levels):
+    {
+        (level_ind, node_ind): get_node_cost(node, get_corpus(chosen_nodes))
+        for node_ind, node in enumerate(level)
+    }
+
+# %%
+visited = []
+current = 0
+distances = dict()
+while True:
+    neighbors = [
+        visited[:] + [node_ind] for node_ind, _ in enumerate(levels[len(visited)])
+    ]
+    unvisited = {tuple(node): None for node in neighbors[:]}
+    for neighbor in neighbors:
+        neighbor = tuple(neighbor)
+        newDistance = get_node_cost(
+            levels[len(neighbor) - 1][neighbor[-1]], get_corpus(tuple(visited))
+        )
+        if unvisited[neighbor] is None or unvisited[neighbor] > newDistance:
+            unvisited[neighbor] = newDistance
+    # visited[current] = currentDistance
+    visited.append(current)
+    # del unvisited[current]
+    if not unvisited or len(visited) == len(levels):
+        break
+    candidates = [node for node in unvisited.items() if node[1]]
+    current, currentDistance = sorted(candidates, key=lambda x: x[1])[0]
+    current = current[0]
+
+
+print(visited)
 
 # %%
