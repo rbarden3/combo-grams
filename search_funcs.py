@@ -1,5 +1,5 @@
 # %%
-from search_funcs import partition, get_paths_cost, get_paths
+from helper_funcs import get_paths_cost, get_paths
 
 # %%
 def k_best_paths(part_ds, start_k=0, k=2, buffer=1, prepend_paths=[]):
