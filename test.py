@@ -1,195 +1,71 @@
 # %%
+from search_funcs import partition, get_paths_cost, get_paths
 import pandas as pd
-from nltk import ngrams
-import copy
-
-df = pd.read_csv(r"abcnews-date-text\abcnews-date-text.csv")
 
 # %%
-df["headline_text"].head()
-
-sent = ["How", "are", "you", "doing", "today"]
-sentence = "How are you doing today"
-
-for sentence in df["headline_text"].head():
-    sent = sentence.split()
-    c_grams = []
-    for n in range(len(sent)):
-        sent_grams = ngrams(sent, n + 1)
-        c_grams.append(list(sent_grams))
-
-# %%
-for n_gram in c_grams:
-    print(n_gram)
-
-# %%
-for n_gram in c_grams:
-    for gram in n_gram:
-        # print(gram)
-        print(sentence.partition(" ".join(gram)))
-
-# %%
-
-
-def partition(collection):
-    global counter
-    if len(collection) == 1:
-        yield [collection]
-        return
-    first = collection[0]
-    for smaller in partition(collection[1:]):
-        for n, subset in enumerate(smaller):
-            yield smaller[:n] + [[first] + subset] + smaller[(n + 1) :]  # noqa: E203
-        yield [[first]] + smaller
-
-
-# for sentence in df["headline_text"].head():
-#     for partitions in partition(sentence.split()):
-#         print(partitions)
-
-# %%
-partitions = list(partition(df["headline_text"][0].split()))
-
-# %%
-for part in partitions:
-    print(part)
+def partition_dataset(dataset, max_part_size=3):
+    """Partitions the given dataset into partitions of size <= max_part_size"""
+    return [
+        [part for part in partition(level.split()) if len(part) <= max_part_size]
+        for level in dataset
+    ]
 
 
 # %%
-def get_node_cost(in_node, corpus):
-    """Used to get the cost of a node, the cost of the node is reduced if it
-    is made up of grams that have been selected already"""
-    node = in_node[:]
-    for gram_ind, gram in enumerate(node):
-        if tuple(gram) in corpus:
-            node[gram_ind] = -1
-        else:
-            node[gram_ind] = 1
+news_dataset = (
+    pd.read_csv(r"abcnews-date-text\abcnews-date-text.csv")["headline_text"]
+    .head(15)
+    .tolist()
+)
+news_partitioned = partition_dataset(news_dataset)
 
-    return sum(node)
+ABC_dataset = ["A B", "A C", "B A", "B C", "C A", "C B", "A C"]
+ABC_partitioned = partition_dataset(ABC_dataset)
+
+# %%
+def k_best_paths(part_ds, start_k=0, k=2, buffer=1, prepend_paths=[]):
+    """Returns the best paths in the first k entries in the given partitioned dataset"""
+    tree = {}
+    lowest_cost = float("inf")
+    for path, node_cost, tot_cost in get_paths_cost(
+        map=part_ds, paths=get_paths(part_ds[start_k:k], prepend_paths)
+    ):
+        tree[path] = {"node_cost": node_cost, "tot_cost": tot_cost}
+        if tot_cost < lowest_cost:
+            lowest_cost = tot_cost
+    filtered_dict = {k: v for k, v in tree.items() if v["tot_cost"] <= lowest_cost}
+    return filtered_dict
 
 
 # %%
-def get_cost(level, corpus):
-    level_vals = copy.deepcopy(level)
-    for ind, node in enumerate(level_vals):
-        level_vals[ind] = get_node_cost(node, corpus)
-    return level_vals
-
-
-print(get_cost(partitions, []))
-
-
-# %%
-def get_seq_cost(seq):
-    """Returns the cost of a sequence where in enumerated form,
-    The index is the index in 'levels' of a sentance's partitions,
-    the value is the partition set selected"""
-    seq_vals = copy.deepcopy(seq)
-    seq_costs = []
-    for lev_ind, nod_ind in enumerate(seq_vals):
-        seq_costs.append(
-            get_node_cost(
-                levels[lev_ind][nod_ind], get_corpus(tuple(seq_vals[:lev_ind]))
-            )
+def find_best_paths(map, incr=3, buffer=1):
+    """Finds the best paths in the given map"""
+    best_paths = [()]
+    start_ind = 0
+    far_ind = incr
+    while far_ind <= len(map):
+        best_paths = list(
+            k_best_paths(
+                map,
+                start_k=start_ind,
+                k=far_ind,
+                buffer=buffer,
+                prepend_paths=best_paths,
+            ).keys()
         )
-    return seq_costs
-
-
-get_seq_cost([1, 2, 3, 4])
-
-
-# %%
-def get_corpus(in_chosen_nodes):
-    """Function used to create a corpus of partitions already used.
-    This is used to calculate the cost of nodes"""
-    local_corpus = set()
-    for level_ind, node_ind in enumerate(in_chosen_nodes):
-        local_corpus |= set([tuple(val) for val in levels[level_ind][node_ind]])
-    return local_corpus
+        print(best_paths, start_ind, far_ind)
+        start_ind = far_ind
+        if far_ind < len(map) and far_ind + incr >= len(map):
+            far_ind = len(map)
+        else:
+            far_ind += incr
+    return best_paths
 
 
 # %%
-dataset = df["headline_text"].head()
-levels = [list(partition(level.split())) for level in dataset]
-chosen_nodes = [3, 4, 5, 6]
-# levels = []
-# for level in [tuple(partition(level.split())) for level in dataset]:
-#     this_level = []
-#     for node in level:
-#         this_level.append(tuple([tuple(gram) for gram in node]))
-#     levels.append(this_level)
-
-# for level in levels:
-#     get_cost(level, corpus)
-print(get_cost(levels[0], get_corpus(chosen_nodes)))
-
-
-for level_ind, node_ind in enumerate(chosen_nodes):
-    print(f"\n({level_ind}, {node_ind}): {levels[level_ind][node_ind]}")
-    base_cost = get_node_cost(levels[level_ind][node_ind], [])
-    actual_cost = get_node_cost(levels[level_ind][node_ind], get_corpus(chosen_nodes))
-    print(f"Base cost: {base_cost}\tActual Cost: {actual_cost}")
-
-print(get_cost(levels[len(chosen_nodes)], get_corpus(chosen_nodes)))
-for level_ind, level in enumerate(levels):
-    print(f"\n({level_ind}): {level}")
-# %%
-distances = {}
-# for level_ind, level in enumerate(levels):
-#     for node_ind, node in enumerate(level):
-#         distances[(level_ind, node_ind)] = get_node_cost(node, get_corpus(chosen_nodes))
-
-for level_ind, level in enumerate(levels):
-    {
-        (level_ind, node_ind): get_node_cost(node, get_corpus(chosen_nodes))
-        for node_ind, node in enumerate(level)
-    }
-
-#%%
-# Dataset used for testing
-dataset = ["A B C D", "A B C", "A B C", "A B C"]
-levels = [list(partition(level.split())) for level in dataset]
-
+find_best_paths(ABC_partitioned, incr=3, buffer=3)
 
 # %%
-def dijkstras():
-    """Initial implementation, I am currently encountering issues dynamically
-    cycling through nodes. It is instead selecting the first node no matter what"""
-    visited = []
-    current = None
-    while True:
-        levs = [lev[0] for lev in visited]
-        neighbors = [
-            levs[:] + [node_ind] for node_ind, _ in enumerate(levels[len(visited)])
-        ]
-        unvisited = {tuple(node): None for node in neighbors[:]}
-        for neighbor in neighbors:
-            neighbor = tuple(neighbor)
-            newDistance = get_seq_cost(neighbor)
-            if unvisited[neighbor] is None or unvisited[neighbor] > newDistance:
-                unvisited[neighbor] = newDistance
-        if current is not None:
-            visited.append(current)
-        if not unvisited or len(visited) == len(levels):
-            break
-        candidates = [node for node in unvisited.items() if node[1]]
-        current = sorted(candidates, key=lambda x: x[1])[0]
-        # current = current[0] + 1
-
-    print(visited)
-
-
-# %%
-dijkstras()
-# %%
-import itertools
-
-graph = [[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]]
-test_list = list(itertools.permutations(range(4), 4))
-# %%
-for nod in test_list:
-    get_node_cost(levels[len(nod) - 1][nod[-1]], get_corpus(tuple(visited)))
-
+find_best_paths(news_partitioned, incr=2, buffer=1)
 
 # %%
